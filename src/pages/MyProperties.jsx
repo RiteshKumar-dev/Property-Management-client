@@ -13,23 +13,44 @@ import {
   User,
   X,
   Image as ImageIcon,
+  Copy,
 } from 'lucide-react';
 import usePropertyStore from '../store/propertyStore';
+import { useNavigate } from 'react-router-dom';
+import api from '../utils/axios';
 
 const MyProperties = () => {
   const { myProperties, loading, error, fetchMyProperties } = usePropertyStore();
-
-  // State for Image Gallery Popup
+  const navigate = useNavigate();
   const [activeGallery, setActiveGallery] = useState(null);
 
   useEffect(() => {
     fetchMyProperties();
   }, []);
 
-  const handleDelete = (id) => {
+  const handleCopyId = async (id) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      alert('Property ID copied!');
+    } catch (err) {
+      alert('Failed to copy ID');
+    }
+  };
+
+  const handleEdit = (property) => {
+    navigate('/add-property', { state: { editData: property } });
+  };
+
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this property?')) {
-      // Future Delete API call logic
-      console.log('Deleting property with ID:', id);
+      try {
+        const res = await api.delete(`/properties/${id}`);
+        if (res.data.success) {
+          fetchMyProperties(true);
+        }
+      } catch (err) {
+        alert(err.response?.data?.message || 'Error deleting property');
+      }
     }
   };
 
@@ -228,12 +249,20 @@ const MyProperties = () => {
                   <td className="px-6 py-5 text-right">
                     <div className="flex justify-end gap-2.5">
                       <button
+                        onClick={() => handleCopyId(property._id)}
+                        title="Copy Property ID"
+                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-slate-600 hover:bg-slate-900 hover:text-white transition-all hover:shadow-lg border border-gray-100"
+                      >
+                        <Copy size={18} />
+                      </button>
+                      <button
                         title="Open Details"
                         className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-gray-500 hover:bg-indigo-600 hover:text-white transition-all hover:shadow-lg hover:shadow-indigo-200 border border-gray-100"
                       >
                         <ExternalLink size={18} />
                       </button>
                       <button
+                        onClick={() => handleEdit(property)}
                         title="Edit Listing"
                         className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all hover:shadow-lg hover:shadow-indigo-200 border border-gray-100"
                       >

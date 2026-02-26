@@ -7,6 +7,7 @@ const usePropertyStore = create(
     (set, get) => ({
       properties: [],
       myProperties: [],
+      interestedUsersMap: {},
       loading: false,
       error: null,
       lastFetched: null,
@@ -78,6 +79,26 @@ const usePropertyStore = create(
           lastMyFetched: null,
         });
       },
+      fetchInterestedUsers: async (propertyId) => {
+        set({ loading: true, error: null });
+        try {
+          const res = await api.get(`/properties/${propertyId}/interested-users`);
+          console.log(res);
+
+          set((state) => ({
+            interestedUsersMap: {
+              ...state.interestedUsersMap,
+              [propertyId]: res.data.data,
+            },
+            loading: false,
+          }));
+        } catch (err) {
+          set({
+            error: err.response?.data?.message || 'Failed to fetch interested users',
+            loading: false,
+          });
+        }
+      },
     }),
     {
       name: 'property-storage',
@@ -86,6 +107,7 @@ const usePropertyStore = create(
         myProperties: state.myProperties,
         lastFetched: state.lastFetched,
         lastMyFetched: state.lastMyFetched,
+        interestedUsersMap: state.interestedUsersMap,
       }),
     },
   ),

@@ -1,15 +1,45 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, BedDouble, Bath, Maximize, User, ChevronRight } from 'lucide-react';
+import { MapPin, BedDouble, Bath, Maximize, User, ChevronRight, Heart, Copy } from 'lucide-react';
 import usePropertyStore from '../store/propertyStore';
+import api from '../utils/axios';
+import Toast from '../components/Toast';
 
 const AllPropertiesList = () => {
   const { properties, loading, error, fetchProperties } = usePropertyStore();
+  const [toast, setToast] = useState({ type: '', message: '' });
+  const [interestLoading, setInterestLoading] = useState(null);
 
   useEffect(() => {
     fetchProperties();
   }, []);
 
+  const handleInterest = async (e, propertyId) => {
+    e.stopPropagation();
+    setInterestLoading(propertyId);
+    try {
+      const res = await api.post(`/properties/${propertyId}/interest`);
+      if (res.data.success) {
+        setToast({ type: 'success', message: 'Interest sent to owner!' });
+        fetchProperties(true);
+      }
+    } catch (err) {
+      setToast({
+        type: 'error',
+        message: err.response?.data?.message || 'Failed to record interest',
+      });
+    } finally {
+      setInterestLoading(null);
+    }
+  };
+  const handleCopyId = async (id) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      alert('Property ID copied!');
+    } catch (err) {
+      alert('Failed to copy ID');
+    }
+  };
   if (loading)
     return (
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 pt-5">
@@ -60,7 +90,20 @@ const AllPropertiesList = () => {
                     {property.type}
                   </span>
                 </div>
-
+                {/* --- INTEREST BUTTON (TOP RIGHT) --- */}
+                <button
+                  onClick={(e) => handleInterest(e, property._id)}
+                  disabled={interestLoading === property._id}
+                  className={`absolute top-4 right-4 p-3 rounded-full backdrop-blur-md transition-all duration-300 shadow-lg ${
+                    interestLoading === property._id ? 'opacity-50' : 'opacity-100'
+                  } bg-white/90 hover:bg-rose-500 hover:text-white text-rose-500`}
+                >
+                  <Heart
+                    size={20}
+                    fill={interestLoading === property._id ? 'currentColor' : 'none'}
+                    className={interestLoading === property._id ? 'animate-pulse' : ''}
+                  />
+                </button>
                 {/* Price Label */}
                 <div className="absolute bottom-4 left-4">
                   <div className="bg-indigo-600/90 backdrop-blur-md text-white px-4 py-2 rounded-2xl font-bold text-sm shadow-lg">
@@ -154,7 +197,13 @@ const AllPropertiesList = () => {
                     </span>
                   </div>
                 </div>
-
+                <button
+                  onClick={() => handleCopyId(property._id)}
+                  title="Copy Property ID"
+                  className="h-10 w-10 flex items-center justify-center rounded-xl bg-gray-50 text-slate-600 hover:bg-slate-900 hover:text-white transition-all hover:shadow-lg border border-gray-100"
+                >
+                  <Copy size={18} />
+                </button>
                 <button className="flex items-center gap-1 bg-gray-900 text-white pl-5 pr-3 py-2.5 rounded-2xl text-xs font-bold hover:bg-indigo-600 transition-all group/btn">
                   View Details
                   <ChevronRight
@@ -167,6 +216,11 @@ const AllPropertiesList = () => {
           </motion.div>
         );
       })}
+      <Toast
+        type={toast.type}
+        message={toast.message}
+        onClose={() => setToast({ type: '', message: '' })}
+      />
     </div>
   );
 };

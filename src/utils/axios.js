@@ -1,8 +1,9 @@
 import axios from 'axios';
-//https://property-management-server-ln36.onrender.com
-//http://localhost:5000/api
+const PRODUCTION_API_BASE_URL = `https://property-management-server-ln36.onrender.com/API`;
+const DEVELOPEMENT_API_BASE_URL = `http://localhost:5000/api`;
+
 const api = axios.create({
-  baseURL: 'https://property-management-server-ln36.onrender.com/api',
+  baseURL: PRODUCTION_API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {

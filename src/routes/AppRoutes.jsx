@@ -7,6 +7,7 @@ import Register from '../pages/Register';
 import Home from '../pages/Home';
 import AddProperty from '../pages/AddProperty';
 import MyProperties from '../pages/MyProperties';
+import InterestPropertyUserList from '../pages/InterestPropertyUserList';
 
 function AppRoutes() {
   return (
@@ -33,6 +34,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <MyProperties />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/interest-properties"
+          element={
+            <ProtectedRoute>
+              <InterestPropertyUserList />
             </ProtectedRoute>
           }
         />

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
@@ -8,8 +8,9 @@ import {
   ArrowLeft,
   Upload,
   CheckCircle2,
+  Image as ImageIcon,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/axios';
 import Toast from '../components/Toast';
 import usePropertyStore from '../store/propertyStore';
@@ -17,10 +18,15 @@ import usePropertyStore from '../store/propertyStore';
 const MAX_IMAGES = 6;
 
 const AddProperty = () => {
-  const { fetchProperties } = usePropertyStore();
+  const { fetchProperties, fetchMyProperties } = usePropertyStore();
 
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+
+  // EDIT MODE CHECK
+  const location = useLocation();
+  const editData = location.state?.editData;
+  const isEditMode = !!editData;
 
   const [step, setStep] = useState(1); // New state for multi-step UI
   const [toast, setToast] = useState({ type: '', message: '' });
@@ -37,6 +43,23 @@ const AddProperty = () => {
     bathrooms: '',
     area: '',
   });
+
+  useEffect(() => {
+    if (isEditMode) {
+      setForm({
+        title: editData.title || '',
+        description: editData.description || '',
+        price: editData.price || '',
+        location: editData.location || '',
+        type: editData.type || 'Apartment',
+        bedrooms: editData.bedrooms || '',
+        bathrooms: editData.bathrooms || '',
+        area: editData.area || '',
+      });
+      // Existing images are handled differently since they are URLs, not Files
+      // Agar images update nahi karni toh hum step 1 ke baad seedha submit kar sakte hain
+    }
+  }, [editData, isEditMode]);
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -82,19 +105,38 @@ const AddProperty = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading || images.length === 0) return;
+    if (loading) return;
+
+    if (!isEditMode && images.length === 0) {
+      setToast({ type: 'warning', message: 'Please upload at least one image' });
+      return;
+    }
 
     const formData = new FormData();
-    Object.keys(form).forEach((key) => formData.append(key, form[key].toString().trim()));
-    images.forEach((img) => formData.append('images', img));
 
+    Object.keys(form).forEach((key) => formData.append(key, form[key].toString().trim()));
+    if (images.length > 0) {
+      images.forEach((img) => formData.append('images', img));
+    }
     setLoading(true);
     try {
-      const res = await api.post('/properties', formData);
+      let res;
+      if (isEditMode) {
+        // CALL PUT ROUTE
+        res = await api.put(`/properties/${editData._id}`, formData);
+      } else {
+        // CALL POST ROUTE
+        res = await api.post('/properties', formData);
+      }
+
       if (res.data.success) {
-        setToast({ type: 'success', message: 'Property added successfully!' });
+        setToast({
+          type: 'success',
+          message: isEditMode ? 'Property updated successfully!' : 'Property added successfully!',
+        });
         fetchProperties(true);
-        setTimeout(() => navigate('/'), 1200);
+        fetchMyProperties(true);
+        setTimeout(() => (isEditMode ? navigate('/my-properties') : navigate('/')), 1200);
       }
     } catch (err) {
       setToast({
@@ -117,10 +159,10 @@ const AddProperty = () => {
         <div className="bg-indigo-600 p-8 text-white">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-3xl font-extrabold flex items-center gap-3">
-              <Building2 size={32} /> Add New Property
+              <Building2 size={32} /> {isEditMode ? 'Edit Property' : 'Add New Property'}{' '}
             </h2>
             <span className="bg-white/20 px-4 py-1 rounded-full text-sm backdrop-blur-md">
-              Step {step} of 2
+              {isEditMode ? 'Quick Update' : `Step ${step} of 2`}
             </span>
           </div>
           <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
@@ -289,16 +331,22 @@ const AddProperty = () => {
                       <div className="bg-indigo-100 p-4 rounded-full text-indigo-600 mb-4">
                         <Upload size={32} />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-800">Upload Property Images</h3>
+                      <h3 className="text-xl font-bold text-gray-800">
+                        {isEditMode ? 'Update Photos (Optional)' : 'Upload Property Images'}
+                      </h3>
                       <p className="text-gray-500 mb-6">
-                        Select up to {MAX_IMAGES} high-quality photos
+                        {isEditMode
+                          ? "If you don't select new images, the existing ones will be kept."
+                          : `Select up to ${MAX_IMAGES} high-quality photos`}
                       </p>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current.click()}
                         className="bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white px-6 py-2 rounded-xl font-bold transition-all"
                       >
-                        Choose Files ({images.length}/{MAX_IMAGES})
+                        {images.length > 0
+                          ? `Selected ${images.length} Files`
+                          : 'Choose Files'}{' '}
                       </button>
                     </div>
                   </div>
@@ -346,25 +394,25 @@ const AddProperty = () => {
                       onClick={() => setStep(1)}
                       className="text-gray-500 font-semibold flex items-center gap-2 hover:text-indigo-600 transition"
                     >
-                      <ArrowLeft size={20} /> Back to Details
+                      <ArrowLeft size={20} /> Back
                     </button>
                     <button
                       type="submit"
-                      disabled={images.length === 0 || loading}
+                      disabled={(!isEditMode && images.length === 0) || loading}
                       className="bg-green-600 hover:bg-green-700 text-white px-10 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-green-200 transition-all disabled:opacity-50"
                     >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Uploading...
-                        </div>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={20} /> Publish Property
-                        </>
-                      )}
+                      {loading
+                        ? 'Processing...'
+                        : isEditMode
+                          ? 'Update Property'
+                          : 'Publish Property'}
                     </button>
                   </div>
+                  {isEditMode && (
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-amber-700 text-sm italic">
+                      Note: Selecting new images will replace all previous images for this property.
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
