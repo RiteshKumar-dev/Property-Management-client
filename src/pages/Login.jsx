@@ -4,6 +4,7 @@ import { Mail, Lock, Home } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/axios';
 import Toast from '../components/Toast';
+import usePropertyStore from '../store/propertyStore';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const Login = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { fetchProperties, fetchMyProperties } = usePropertyStore();
 
   const isFormValid = useMemo(() => {
     return form.email.trim() !== '' && form.password.trim() !== '';
@@ -49,7 +51,8 @@ const Login = () => {
           type: 'success',
           message: 'Login successful!',
         });
-
+        fetchProperties(true);
+        fetchMyProperties(true);
         setTimeout(() => {
           navigate('/');
           window.location.reload();
